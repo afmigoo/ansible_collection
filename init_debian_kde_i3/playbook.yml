@@ -1,0 +1,149 @@
+---
+
+- hosts: localhost
+  become: true
+  vars:
+    remote_user: elen
+    remote_user_dir: "/home/{{ remote_user }}"
+    remote_user_conf: "{{ remote_user_dir }}/.config"
+    term_pkg: alacritty
+    term_cmd: "{{ term_pkg }}"
+    wallpapper_file: signalis_sea.jpg 
+
+  tasks:
+  - name: Update & upgrade apt
+    ansible.builtin.apt:
+      update_cache: yes
+      upgrade: safe
+
+  - name: Install basic packages
+    ansible.builtin.apt:
+      name:
+        - vim
+        - tmux
+        - htop
+        - net-tools
+        - ncdu
+        - fonts-powerline
+        - python3-venv
+      state: latest
+
+  - name: Init home directory
+    block:
+    - name: Create dev directory
+      ansible.builtin.file:
+        path: "{{ remote_user_dir }}/dev"
+        state: directory
+        owner: "{{ remote_user }}"
+        group: "{{ remote_user }}"
+        mode: 0755
+    - name: Create bin directory
+      ansible.builtin.file:
+        path: "{{ remote_user_dir }}/bin"
+        state: directory
+        owner: "{{ remote_user }}"
+        group: "{{ remote_user }}"
+        mode: 0755
+    - name: Create apps directory
+      ansible.builtin.file:
+        path: "{{ remote_user_dir }}/apps"
+        state: directory
+        owner: "{{ remote_user }}"
+        group: "{{ remote_user }}"
+        mode: 0755
+    - name: Add user block to .bashrc
+      ansible.builtin.blockinfile:
+        path: "{{ remote_user_dir }}/.bashrc"
+        block: "{{ lookup('ansible.builtin.file', 'bashrc_appendix') }}"
+        state: present
+
+  - name: i3wm
+    block:
+    - name: Install i3 WM and feh
+      ansible.builtin.apt:
+        name: 
+          - i3
+          - feh
+        state: latest
+    - name: Create config dir
+      ansible.builtin.file:
+        path: "{{ remote_user_conf }}"
+        state: directory
+        owner: "{{ remote_user }}"
+        group: "{{ remote_user }}"
+        mode: 0755
+    - name: Create i3 config dir
+      ansible.builtin.file:
+        path: "{{ remote_user_conf }}/i3"
+        state: directory
+        owner: "{{ remote_user }}"
+        group: "{{ remote_user }}"
+        mode: 0755
+    - name: Copy i3 config
+      ansible.builtin.copy:
+        src: ./config
+        dest: "{{ remote_user_conf }}/i3/config"
+        owner: "{{ remote_user }}"
+        group: "{{ remote_user }}"
+        mode: 0755
+        validate: "/usr/bin/i3 -Cc %s"
+
+  - name: i3wm customization
+    block:
+    - name: Copy wallpapper
+      ansible.builtin.copy:
+        src: "./{{ wallpapper_file }}"
+        dest: "/usr/share/images/desktop-base/{{ wallpapper_file }}"
+        owner: root
+        group: root
+        mode: 0755
+    - name: Set wallpapper for i3 with feh
+      ansible.builtin.lineinfile:
+        path: "{{ remote_user_conf }}/i3/config"
+        regexp: "^exec_always --no-startup-id feh --bg-fill"
+        line: "exec_always --no-startup-id feh --bg-fill /usr/share/images/desktop-base/{{ wallpapper_file }}"
+    - name: Clone bumblebee-status
+      ansible.builtin.git:
+        repo: "https://github.com/tobi-wan-kenobi/bumblebee-status"
+        dest: "{{ remote_user_dir }}/apps/bumblebee-status"
+        single_branch: true
+    - name: Chown bumbplebee-repo to user
+      ansible.builtin.file:
+        path: "{{ remote_user_dir }}/apps/bumblebee-status"
+        state: directory
+        recurse: yes
+        owner: "{{ remote_user }}"
+        group: "{{ remote_user }}"
+    - name: Link bumblebee-status to bin
+      ansible.builtin.file:
+        src: "{{ remote_user_dir }}/apps/bumblebee-status/bumblebee-status"
+        dest: "{{ remote_user_dir }}/bin/bumblebee-status"
+        owner: "{{ remote_user }}"
+        group: "{{ remote_user }}"
+        state: link       
+
+  - name: Setup terminal emulator
+    block:
+    - name: Install terminal emulator package
+      ansible.builtin.apt:
+        name: "{{ term_pkg }}"
+        state: latest
+    - name: Set i3 keybind for terminal emulator
+      ansible.builtin.lineinfile:
+        path: "{{ remote_user_conf }}/i3/config"
+        regexp: "^set \\$term"
+        line: "set $term {{ term_cmd }}"
+        validate: "/usr/bin/i3 -Cc %s"
+
+  - name: Install desktop apps
+    block:
+    - name: Install vscode .deb
+      ansible.builtin.apt:
+        deb: https://code.visualstudio.com/sha/download?build=stable&os=linux-deb-x64
+    - name: Install telegram
+      ansible.builtin.apt:
+        name: telegram-desktop
+        state: latest
+    #- name: Install bitwarden
+
+

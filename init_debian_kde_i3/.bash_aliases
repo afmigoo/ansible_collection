@@ -1,0 +1,1 @@
+alias telegram=telegram-desktop
