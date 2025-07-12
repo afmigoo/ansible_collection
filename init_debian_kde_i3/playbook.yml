@@ -16,16 +16,21 @@
       update_cache: yes
       upgrade: safe
 
-  - name: Install basic packages
+  - name: Install packages
     ansible.builtin.apt:
       name:
+        # general
         - vim
         - tmux
         - htop
         - net-tools
         - ncdu
-        - fonts-powerline
         - python3-venv
+        - "{{ term_pkg }}"
+        # window manager related
+        - i3
+        - feh
+        - fonts-powerline
       state: latest
 
   - name: Init home directory
@@ -59,12 +64,6 @@
 
   - name: i3wm
     block:
-    - name: Install i3 WM and feh
-      ansible.builtin.apt:
-        name: 
-          - i3
-          - feh
-        state: latest
     - name: Create config dir
       ansible.builtin.file:
         path: "{{ remote_user_conf }}"
@@ -107,7 +106,7 @@
         repo: "https://github.com/tobi-wan-kenobi/bumblebee-status"
         dest: "{{ remote_user_dir }}/apps/bumblebee-status"
         single_branch: true
-    - name: Chown bumbplebee-repo to user
+    - name: Chown bumblebee-repo to user
       ansible.builtin.file:
         path: "{{ remote_user_dir }}/apps/bumblebee-status"
         state: directory
@@ -122,18 +121,12 @@
         group: "{{ remote_user }}"
         state: link       
 
-  - name: Setup terminal emulator
-    block:
-    - name: Install terminal emulator package
-      ansible.builtin.apt:
-        name: "{{ term_pkg }}"
-        state: latest
-    - name: Set i3 keybind for terminal emulator
-      ansible.builtin.lineinfile:
-        path: "{{ remote_user_conf }}/i3/config"
-        regexp: "^set \\$term"
-        line: "set $term {{ term_cmd }}"
-        validate: "/usr/bin/i3 -Cc %s"
+  - name: Set i3 keybind for terminal emulator
+    ansible.builtin.lineinfile:
+      path: "{{ remote_user_conf }}/i3/config"
+      regexp: "^set \\$term"
+      line: "set $term {{ term_cmd }}"
+      validate: "/usr/bin/i3 -Cc %s"
 
   - name: Install desktop apps
     block:
