@@ -31,6 +31,7 @@
         - i3
         - feh
         - fonts-powerline
+        - fonts-font-awesome
       state: latest
 
   - name: Init home directory
@@ -101,21 +102,20 @@
         path: "{{ remote_user_conf }}/i3/config"
         regexp: "^exec_always --no-startup-id feh --bg-fill"
         line: "exec_always --no-startup-id feh --bg-fill /usr/share/images/desktop-base/{{ wallpapper_file }}"
-    - name: Clone bumblebee-status
-      ansible.builtin.git:
-        repo: "https://github.com/tobi-wan-kenobi/bumblebee-status"
-        dest: "{{ remote_user_dir }}/apps/bumblebee-status"
-        single_branch: true
-    - name: Chown bumblebee-repo to user
-      ansible.builtin.file:
-        path: "{{ remote_user_dir }}/apps/bumblebee-status"
-        state: directory
-        recurse: yes
-        owner: "{{ remote_user }}"
-        group: "{{ remote_user }}"
+    - name: Install bumblebee-status and deps
+      ansible.builtin.pip:
+        virtualenv: "{{ remote_user_dir }}/.venv"
+        virtualenv_command: "{{ ansible_python_interpreter }} -m venv"
+        name:
+          - bumblebee-status
+          - psutil
+    - name: Copy bumblebee-status themes to user .local
+      ansile.builtin.shell:
+        cmd: "cp -r {{ remote_user_dir }}/.venv/share/bumblebee-status {{ remote_user_dir }}/.local/share/"
+        creates: "{{ remote_user_dir }}/.local/share/bumblebee-status/themes/default.json"
     - name: Link bumblebee-status to bin
       ansible.builtin.file:
-        src: "{{ remote_user_dir }}/apps/bumblebee-status/bumblebee-status"
+        src: "{{ remote_user_dir }}/.venv/bin/bumblebee-status"
         dest: "{{ remote_user_dir }}/bin/bumblebee-status"
         owner: "{{ remote_user }}"
         group: "{{ remote_user }}"
