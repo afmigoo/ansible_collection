@@ -110,7 +110,7 @@
           - bumblebee-status
           - psutil
     - name: Copy bumblebee-status themes to user .local
-      ansile.builtin.shell:
+      ansible.builtin.shell:
         cmd: "cp -r {{ remote_user_dir }}/.venv/share/bumblebee-status {{ remote_user_dir }}/.local/share/"
         creates: "{{ remote_user_dir }}/.local/share/bumblebee-status/themes/default.json"
     - name: Link bumblebee-status to bin
